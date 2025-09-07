@@ -1,0 +1,16 @@
+[2025-09-07 13:44:59] 🚀 Starting continuous monitoring for anydesk
+[2025-09-07 13:45:04] ✅ anydesk ditemukan! (2 processes)
+[2025-09-07 13:45:04] 📋 Process names: AnyDesk.exe, anydesk
+[2025-09-07 13:45:04]    PID 2257: anydesk
+[2025-09-07 13:45:04]    PID 26313: AnyDesk.exe
+[2025-09-07 13:45:04] 🔗 Active Connections: 2
+[2025-09-07 13:45:06] 🌍 Destinations: 2
+[2025-09-07 13:45:06]    📍 15.235.229.244 (Singapore) - Ports: 443 - Connections: 1
+[2025-09-07 13:45:06]    📍 15.235.229.241 (Singapore) - Ports: 443 - Connections: 1
+[2025-09-07 13:45:06] ------------------------------------------------------------
+[2025-09-07 13:45:16] 🔗 Active Connections: 2
+[2025-09-07 13:45:16] 🌍 Destinations: 2
+[2025-09-07 13:45:16]    📍 15.235.229.244 (Singapore) - Ports: 443 - Connections: 1
+[2025-09-07 13:45:16]    📍 15.235.229.241 (Singapore) - Ports: 443 - Connections: 1
+[2025-09-07 13:45:16] ------------------------------------------------------------
+[2025-09-07 13:45:20] ⏹️  Monitoring stopped by user

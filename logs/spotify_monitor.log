@@ -1,0 +1,7 @@
+[2025-09-07 13:40:58] 🎯 Starting spotify session monitoring for 300 seconds
+[2025-09-07 13:41:03] ❌ spotify tidak ditemukan
+[2025-09-07 13:41:27] 🚀 Starting continuous monitoring for spotify
+[2025-09-07 13:41:32] ❌ spotify tidak ditemukan
+[2025-09-07 13:41:32] 💡 Coba nama proses yang berbeda:
+[2025-09-07 13:41:32]    - Cek dengan: ps aux | grep -i 'nama_aplikasi'
+[2025-09-07 13:41:32]    - Cek dengan: netstat -tulpn | grep 'nama_aplikasi'

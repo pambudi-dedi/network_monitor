@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .stat-card.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .stat-card.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .stat-card.danger {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }
+        .connection-item {
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .connection-item.suspicious {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-running {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .status-stopped {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .alert-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        .alert-info {
+            background-color: #d1ecf1;
+            border-left-color: #17a2b8;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-network-wired"></i> Network Monitor
+            </span>
+            <div class="d-flex">
+                <span class="navbar-text me-3">
+                    Status: <span id="monitoring-status" class="status-indicator status-stopped"></span>
+                    <span id="status-text">Stopped</span>
+                </span>
+                <button class="btn btn-success btn-sm" id="start-btn" onclick="startMonitoring()">
+                    <i class="fas fa-play"></i> Start
+                </button>
+                <button class="btn btn-danger btn-sm ms-2" id="stop-btn" onclick="stopMonitoring()" disabled>
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-uppercase">Total Connections</h6>
+                            <h3 id="total-connections">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-link fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card success">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-uppercase">Unique Domains</h6>
+                            <h3 id="unique-domains">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-globe fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card warning">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-uppercase">Data Transferred</h6>
+                            <h3 id="data-transferred">0 MB</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-download fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card danger">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-uppercase">Suspicious</h6>
+                            <h3 id="suspicious-connections">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Tables -->
+        <div class="row">
+            <!-- Connection Chart -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> Connections per Hour (Last 24h)</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="connectionChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Domains -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-trophy"></i> Top Domains</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="top-domains">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <!-- Recent Connections -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-list"></i> Recent Connections</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Source IP</th>
+                                        <th>Destination</th>
+                                        <th>Port</th>
+                                        <th>Protocol</th>
+                                        <th>Country</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="connections-table">
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="spinner-border" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-bell"></i> Recent Alerts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="alerts-list">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let connectionChart;
+        let isMonitoring = false;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            setInterval(loadDashboardData, 5000); // Refresh every 5 seconds
+        });
+
+        async function loadDashboardData() {
+            try {
+                // Load stats
+                const statsResponse = await fetch('/api/stats');
+                const statsData = await statsResponse.json();
+                
+                if (statsData.success) {
+                    updateStats(statsData.data);
+                }
+
+                // Load connections
+                const connectionsResponse = await fetch('/api/connections?limit=20');
+                const connectionsData = await connectionsResponse.json();
+                
+                if (connectionsData.success) {
+                    updateConnectionsTable(connectionsData.data);
+                }
+
+                // Load top domains
+                const domainsResponse = await fetch('/api/domains?limit=10');
+                const domainsData = await domainsResponse.json();
+                
+                if (domainsData.success) {
+                    updateTopDomains(domainsData.data);
+                }
+
+                // Load alerts
+                const alertsResponse = await fetch('/api/alerts?limit=10');
+                const alertsData = await alertsResponse.json();
+                
+                if (alertsData.success) {
+                    updateAlerts(alertsData.data);
+                }
+
+                // Load chart data
+                const chartResponse = await fetch('/api/connection-chart');
+                const chartData = await chartResponse.json();
+                
+                if (chartData.success) {
+                    updateConnectionChart(chartData.data);
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        function updateStats(data) {
+            const stats = data.connection_stats;
+            const monitoring = data.monitoring_stats;
+
+            document.getElementById('total-connections').textContent = stats.total_connections || 0;
+            document.getElementById('unique-domains').textContent = stats.unique_domains || 0;
+            document.getElementById('data-transferred').textContent = (stats.total_data_mb || 0) + ' MB';
+            document.getElementById('suspicious-connections').textContent = stats.suspicious_connections || 0;
+
+            // Update monitoring status
+            isMonitoring = monitoring.is_monitoring;
+            const statusIndicator = document.getElementById('monitoring-status');
+            const statusText = document.getElementById('status-text');
+            const startBtn = document.getElementById('start-btn');
+            const stopBtn = document.getElementById('stop-btn');
+
+            if (isMonitoring) {
+                statusIndicator.className = 'status-indicator status-running';
+                statusText.textContent = 'Running';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                statusIndicator.className = 'status-indicator status-stopped';
+                statusText.textContent = 'Stopped';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        function updateConnectionsTable(connections) {
+            const tbody = document.getElementById('connections-table');
+            tbody.innerHTML = '';
+
+            if (connections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No connections found</td></tr>';
+                return;
+            }
+
+            connections.forEach(conn => {
+                const row = document.createElement('tr');
+                if (conn.is_suspicious) {
+                    row.className = 'table-danger';
+                }
+
+                const time = new Date(conn.timestamp).toLocaleTimeString();
+                const dest = conn.dest_domain || conn.dest_ip;
+                const status = conn.is_suspicious ? 
+                    '<span class="badge bg-danger">Suspicious</span>' : 
+                    '<span class="badge bg-success">Normal</span>';
+
+                row.innerHTML = `
+                    <td>${time}</td>
+                    <td>${conn.source_ip}</td>
+                    <td>${dest}</td>
+                    <td>${conn.dest_port || '-'}</td>
+                    <td><span class="badge bg-primary">${conn.protocol}</span></td>
+                    <td>${conn.country || 'Unknown'}</td>
+                    <td>${status}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateTopDomains(domains) {
+            const container = document.getElementById('top-domains');
+            container.innerHTML = '';
+
+            if (domains.length === 0) {
+                container.innerHTML = '<p class="text-muted">No domains found</p>';
+                return;
+            }
+
+            domains.forEach((domain, index) => {
+                const item = document.createElement('div');
+                item.className = 'd-flex justify-content-between align-items-center mb-2';
+                item.innerHTML = `
+                    <div>
+                        <strong>${index + 1}.</strong> ${domain.dest_domain}
+                        <br><small class="text-muted">Last: ${new Date(domain.last_access).toLocaleString()}</small>
+                    </div>
+                    <span class="badge bg-primary">${domain.access_count}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateAlerts(alerts) {
+            const container = document.getElementById('alerts-list');
+            container.innerHTML = '';
+
+            if (alerts.length === 0) {
+                container.innerHTML = '<p class="text-muted">No alerts</p>';
+                return;
+            }
+
+            alerts.forEach(alert => {
+                const item = document.createElement('div');
+                let alertClass = 'alert-info';
+                if (alert.severity === 'WARNING') alertClass = 'alert-warning';
+                if (alert.severity === 'CRITICAL') alertClass = 'alert-danger';
+
+                item.className = `alert-item ${alertClass}`;
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>${alert.alert_type}</strong>
+                            <p class="mb-0">${alert.message}</p>
+                        </div>
+                        <small>${new Date(alert.timestamp).toLocaleTimeString()}</small>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateConnectionChart(data) {
+            const ctx = document.getElementById('connectionChart').getContext('2d');
+            
+            if (connectionChart) {
+                connectionChart.destroy();
+            }
+
+            connectionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => item.hour),
+                    datasets: [{
+                        label: 'Connections',
+                        data: data.map(item => item.connections),
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function startMonitoring() {
+            try {
+                const response = await fetch('/api/start-monitoring', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ interface: 'eth0' })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Monitoring started successfully!');
+                } else {
+                    alert('Error starting monitoring: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error starting monitoring: ' + error.message);
+            }
+        }
+
+        async function stopMonitoring() {
+            try {
+                const response = await fetch('/api/stop-monitoring', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Monitoring stopped successfully!');
+                } else {
+                    alert('Error stopping monitoring: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error stopping monitoring: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
